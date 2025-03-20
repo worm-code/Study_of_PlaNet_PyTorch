@@ -44,7 +44,9 @@ class CEMAgent:
                 # Sample action candidates and transpose to
                 # (self.horizon, self.N_candidates, action_dim) for parallel exploration
                 action_candidates = \
-                    action_dist.sample([self.N_candidates]).transpose(0, 1)
+                    action_dist.sample([self.N_candidates]).transpose(0, 1) # The operation of action_dist.sample([self.N_candidates]) 
+                                                                            # is used to obtain the distribution of the agent's action 
+                                                                            # decision with the shape [self.N_candidates, self.horizon, action_dim] -> [self.horizon, self.N_candidates, action_dim]
 
                 # Initialize reward, state, and rnn hidden state
                 # The size of state is (self.N_acndidates, state_dim)
@@ -52,7 +54,7 @@ class CEMAgent:
                 # These are for parallel exploration
                 total_predicted_reward = torch.zeros(self.N_candidates, device=self.device)
                 state = state_posterior.sample([self.N_candidates]).squeeze()
-                rnn_hidden = self.rnn_hidden.repeat([self.N_candidates, 1])
+                rnn_hidden = self.rnn_hidden.repeat([self.N_candidates, 1]) # Every action sequence candidate has its own RNN_States
 
                 # Compute total predicted reward by open-loop prediction using prior
                 for t in range(self.horizon):
@@ -64,10 +66,10 @@ class CEMAgent:
                 # update action distribution using top-k samples
                 top_indexes = \
                     total_predicted_reward.argsort(descending=True)[: self.N_top_candidates]
-                top_action_candidates = action_candidates[:, top_indexes, :]
-                mean = top_action_candidates.mean(dim=1)
+                top_action_candidates = action_candidates[:, top_indexes, :]  # The top_action_candidates become [self.horizon, self.N_top_candidates, self.action_dim]
+                mean = top_action_candidates.mean(dim=1) # shape from [self.horizon, self.N_top_candidates, self.action_dim] -> [self.horizon, self.action_dim]
                 stddev = (top_action_candidates - mean.unsqueeze(1)
-                          ).abs().sum(dim=1) / (self.N_top_candidates - 1)
+                          ).abs().sum(dim=1) / (self.N_top_candidates - 1) # the computation of the standard Deviation
                 action_dist = Normal(mean, stddev)
 
         # Return only first action (replan each state based on new observation)
